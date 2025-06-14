@@ -217,6 +217,6 @@ jobs:
           #append_body: false
           #make_latest: true
           #body: |
-            +📦 本 Release 同步自源仓库 [Sesame-TK](https://github.com/${{ github.repository }})
+            #+📦 本 Release 同步自源仓库 [Sesame-TK](https://github.com/${{ github.repository }})
             #✨ **更新内容**:
             #${{ github.event.release.body || '无更新说明' }}

@@ -148,24 +148,34 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                 Log.record(TAG, "定时执行未开启");
                 return;
             }
-            try {
-                if (execAtTimeList != null) {
-                    Calendar lastExecTimeCalendar = TimeUtil.getCalendarByTimeMillis(lastExecTime);
-                    Calendar nextExecTimeCalendar = TimeUtil.getCalendarByTimeMillis(lastExecTime + checkInterval);
-                    for (String execAtTime : execAtTimeList) {
-                        Calendar execAtTimeCalendar = TimeUtil.getTodayCalendarByTimeStr(execAtTime);
-                        if (execAtTimeCalendar != null && lastExecTimeCalendar.compareTo(execAtTimeCalendar) < 0 && nextExecTimeCalendar.compareTo(execAtTimeCalendar) > 0) {
-                            Log.record(TAG, "设置定时执行:" + execAtTime);
-                            execDelayedHandler(execAtTimeCalendar.getTimeInMillis() - lastExecTime);
-                            return;
-                        }
+            long now = System.currentTimeMillis();
+            long nextExecTime = now + checkInterval;
+            if (execAtTimeList != null && !execAtTimeList.isEmpty()) {
+                Calendar nextCal = null;
+                for (String execAtTime : execAtTimeList) {
+                    Calendar execCal = TimeUtil.getTodayCalendarByTimeStr(execAtTime);
+                    if (execCal == null) {
+                        continue;
+                    }
+                    if (execCal.getTimeInMillis() <= now) {
+                        execCal.add(Calendar.DAY_OF_YEAR, 1);
+                    }
+                    if (nextCal == null || execCal.before(nextCal)) {
+                        nextCal = execCal;
                     }
                 }
-            } catch (Exception e) {
-                Log.runtime(TAG, "execAtTime err:：" + e.getMessage());
-                Log.printStackTrace(TAG, e);
+                if (nextCal != null) {
+                    if (nextCal.getTimeInMillis() < nextExecTime) {
+                        nextExecTime = nextCal.getTimeInMillis();
+                        Log.record(TAG, "设置定时执行:" + TimeUtil.getTimeStr(nextExecTime));
+                    }
+                }
             }
-            execDelayedHandler(checkInterval);
+            long delay = nextExecTime - now;
+            if (delay < 0) {
+                delay = 0;
+            }
+            execDelayedHandler(delay);
         } catch (Exception e) {
             Log.runtime(TAG, "scheduleNextExecution：" + e.getMessage());
             Log.printStackTrace(TAG, e);
@@ -184,8 +194,7 @@ public class ApplicationHook implements IXposedHookLoadPackage {
                 Detector.INSTANCE.loadLibrary(soFile.getName().replace(".so", "").replace("lib", ""));
             }
         } catch (Exception e) {
-            Log.error(TAG, "载入so库失败！！");
-            Log.printStackTrace(e);
+            Log.printStackTrace(TAG, "载入so库失败！！", e);
         }
     }
 

@@ -7,70 +7,52 @@ import com.tencent.mmkv.MMKV
 
 object MMKVSettingsManager {
 
-    val objectMapper = jacksonObjectMapper()
-    lateinit var mmkv: MMKV
+    private val mmkvMap = mutableMapOf<String, MMKV>()
+    private val objectMapper = jacksonObjectMapper()
+    private var initialized = false
+    private lateinit var rootDir: String
+    private const val DEFAULT_KEY = "ET3vB^#td87sQqKaY*eMUJXP"
 
+    /** 初始化一次 */
     fun init(context: Context) {
-        MMKV.initialize(context)
-        mmkv = MMKV.mmkvWithID(
-            "sesame-tk", // 唯一标识符
-            MMKV.MULTI_PROCESS_MODE  //多进程访问
-        )
+        val dir = File("/data/local/tmp/sesame_mmkv")
+        if (!dir.exists()) dir.mkdirs()
+        rootDir = dir.absolutePath
+        MMKV.initialize(rootDir)
+        initialized = true
     }
 
-    fun ensureInit() {
-        check(::mmkv.isInitialized) { "MMKVSettingsManager must be initialized before use" }
+    private fun ensureInit() {
+        check(initialized) { "MMKVSettingsManager must be initialized before use" }
     }
 
-    // ========= 基础类型 =========
-
-    fun putBoolean(key: String, value: Boolean) {
+    /** 获取指定 ID 的 MMKV 实例（直接返回对象） */
+    fun getMMKV(id: String = "sesame-tk"): MMKV {
         ensureInit()
-        mmkv.encode(key, value)
-    }
-
-    fun getBoolean(key: String, def: Boolean = false): Boolean {
-        ensureInit()
-        return mmkv.decodeBool(key, def)
-    }
-
-    fun putString(key: String, value: String) {
-        ensureInit()
-        mmkv.encode(key, value)
-    }
-
-    fun getString(key: String, def: String = ""): String {
-        ensureInit()
-        return mmkv.decodeString(key, def) ?: def
-    }
-
-    // ========= 泛型对象 =========
-
-    inline fun <reified T> getObject(key: String, def: T): T {
-        ensureInit()
-        val json = mmkv.decodeString(key) ?: return def
-        return runCatching {
-            objectMapper.readValue(json, object : TypeReference<T>() {})
-        }.getOrElse {
-            def // 解析失败就返回默认值
+        return mmkvMap.getOrPut(id) {
+            MMKV.mmkvWithID(id, MMKV.MULTI_PROCESS_MODE, DEFAULT_KEY)
         }
     }
 
-    fun <T> putObject(key: String, value: T) {
-        ensureInit()
-        val json = runCatching {
-            objectMapper.writeValueAsString(value)
-        }.getOrNull() ?: return
-        mmkv.encode(key, json)
+    /** 获取带 JSON 编/解码能力的封装对象（可选） */
+    fun <T> getObjectMapper(): com.fasterxml.jackson.databind.ObjectMapper = objectMapper
+
+     // ========= 泛型对象 =========
+    inline fun <reified T> getObject(id: String, key: String, def: T): T {
+        val json = getMMKV(id).decodeString(key) ?: return def
+        return runCatching {
+            objectMapper.readValue(json, object : TypeReference<T>() {})
+        }.getOrElse { def }
     }
 
-    fun remove(key: String) {
-        ensureInit()
-        mmkv.remove(key)
-    }
-
-    fun contains(key: String): Boolean {
-        ensureInit()
-        return mmkv.containsKey(key)
+    fun getConfig(shared: Boolean = true, id: String = "default"): MMKV {
+    return if (shared) {
+        getMMKV("shared-$id")
+    } else {
+        val userId = android.os.UserHandle.myUserId()
+        getMMKV("private-$userId-$id")
     }
 }
+
+}
+

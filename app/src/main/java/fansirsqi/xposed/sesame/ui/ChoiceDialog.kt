@@ -1,18 +1,14 @@
-package fansirsqi.xposed.sesame.ui;
+package fansirsqi.xposed.sesame.ui
 
-import android.content.Context;
-import android.content.DialogInterface;
-import android.widget.Button;
+import android.content.Context
+import android.content.DialogInterface
+import android.content.DialogInterface.OnShowListener
+import androidx.core.content.ContextCompat
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import fansirsqi.xposed.sesame.R
+import fansirsqi.xposed.sesame.model.modelFieldExt.ChoiceModelField
 
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-
-import androidx.core.content.ContextCompat;
-
-import fansirsqi.xposed.sesame.R;
-import fansirsqi.xposed.sesame.model.modelFieldExt.ChoiceModelField;
-
-public class ChoiceDialog {
-
+object ChoiceDialog {
     /**
      * 显示单选对话框（Material3 风格）
      *
@@ -20,21 +16,23 @@ public class ChoiceDialog {
      * @param title            对话框的标题
      * @param choiceModelField 包含选项数据的 ChoiceModelField 对象
      */
-    public static void show(Context context, CharSequence title, ChoiceModelField choiceModelField) {
+    @JvmStatic
+    fun show(context: Context, title: CharSequence?, choiceModelField: ChoiceModelField) {
         // 使用 Material3 对话框构造器
-        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(context)
-                .setTitle(title)
-                .setSingleChoiceItems(choiceModelField.getExpandKey(), choiceModelField.getValue(), (p1, p2) -> choiceModelField.setObjectValue(p2))
-                .setPositiveButton(context.getString(R.string.ok), null)
-                .create();
+        val dialog = MaterialAlertDialogBuilder(context)
+            .setTitle(title)
+            .setSingleChoiceItems(
+                choiceModelField.expandKey,
+                choiceModelField.value,
+                DialogInterface.OnClickListener { p1: DialogInterface?, p2: Int -> choiceModelField.setObjectValue(p2) })
+            .setPositiveButton(context.getString(R.string.ok), null)
+            .create()
 
         // 设置确认按钮颜色
-        dialog.setOnShowListener((DialogInterface dialogInterface) -> {
-            Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
-            if (positiveButton != null) {
-                positiveButton.setTextColor(ContextCompat.getColor(context, R.color.selection_color));
-            }
-        });
-        dialog.show();
+        dialog.setOnShowListener(OnShowListener { dialogInterface: DialogInterface? ->
+            val positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE)
+            positiveButton?.setTextColor(ContextCompat.getColor(context, R.color.selection_color))
+        })
+        dialog.show()
     }
 }

@@ -1,189 +1,144 @@
-package fansirsqi.xposed.sesame.ui.widget;
+package fansirsqi.xposed.sesame.ui.widget
 
-import android.annotation.SuppressLint;
-import android.content.Context;
-import android.graphics.Color;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.BaseAdapter;
-import android.widget.CheckBox;
-import android.widget.TextView;
+import android.annotation.SuppressLint
+import android.content.Context
+import android.graphics.Color
+import android.view.View
+import android.view.ViewGroup
+import android.widget.BaseAdapter
+import android.widget.CheckBox
+import android.widget.TextView
+import androidx.core.content.ContextCompat
+import fansirsqi.xposed.sesame.R
+import fansirsqi.xposed.sesame.entity.MapperEntity
+import fansirsqi.xposed.sesame.model.SelectModelFieldFunc
+import fansirsqi.xposed.sesame.util.Log
 
-import androidx.core.content.ContextCompat;
+class ListAdapter(private val context: Context) : BaseAdapter() {
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+    companion object {
+        @SuppressLint("StaticFieldLeak")
+        private var adapter: ListAdapter? = null
+        var listType: ListDialog.ListType? = null
+        val viewHolderList = mutableListOf<ViewHolder>()
 
-import fansirsqi.xposed.sesame.R;
-import fansirsqi.xposed.sesame.entity.MapperEntity;
-import fansirsqi.xposed.sesame.model.SelectModelFieldFunc;
-import fansirsqi.xposed.sesame.util.Log;
-
-public class ListAdapter extends BaseAdapter {
-    private static final String TAG = "ListAdapter";
-    @SuppressLint("StaticFieldLeak")
-    private static ListAdapter adapter;
-    private static ListDialog.ListType listType;
-    private final Context context;  // 将 context 声明为 final
-    private List<? extends MapperEntity> list;
-    private SelectModelFieldFunc selectModelFieldFunc;
-    private int findIndex = -1;
-    private String findWord = null;
-    public static List<ViewHolder> viewHolderList = new ArrayList<>();
-
-    public static ListAdapter get(Context c) {
-        if (adapter == null) {
-            adapter = new ListAdapter(c.getApplicationContext());  // 使用 ApplicationContext
+        fun get(c: Context): ListAdapter {
+            if (adapter == null) {
+                adapter = ListAdapter(c.applicationContext)
+            }
+            return adapter!!
         }
-        return adapter;
-    }
 
-    public static ListAdapter getClear(Context c) {
-        ListAdapter adapter = get(c);
-        adapter.resetFindState();
-        return adapter;
-    }
-
-    public static ListAdapter getClear(Context c, ListDialog.ListType listType) {
-        ListAdapter adapter = get(c);
-        ListAdapter.listType = listType;
-        adapter.resetFindState();
-        return adapter;
-    }
-
-    private ListAdapter(Context c) {
-        this.context = c;  // 使用传入的上下文
-    }
-
-    public void setBaseList(List<? extends MapperEntity> l) {
-        if (l != list) {
-            exitFind();
+        fun getClear(c: Context): ListAdapter {
+            val adapter = get(c)
+            adapter.resetFindState()
+            return adapter
         }
-        this.list = l;
+
+        fun getClear(c: Context, type: ListDialog.ListType): ListAdapter {
+            val adapter = get(c)
+            listType = type
+            adapter.resetFindState()
+            return adapter
+        }
     }
 
-    public void setSelectedList(SelectModelFieldFunc selectModelFieldFunc) {
-        this.selectModelFieldFunc = selectModelFieldFunc;
+    private var list: List<MapperEntity> = emptyList()
+    private var selectModelFieldFunc: SelectModelFieldFunc? = null
+    private var findIndex = -1
+    private var findWord: String? = null
+
+    fun setBaseList(l: List<MapperEntity>) {
+        if (l != list) exitFind()
+        list = l
+    }
+
+    fun setSelectedList(func: SelectModelFieldFunc) {
+        selectModelFieldFunc = func
         try {
-            Collections.sort(list, (o1, o2) -> {
-                boolean contains1 = selectModelFieldFunc.contains(o1.id);
-                boolean contains2 = selectModelFieldFunc.contains(o2.id);
-                if (contains1 == contains2) {
-                    return o1.compareTo(o2);
-                }
-                return contains1 ? -1 : 1;
-            });
-        } catch (Exception e) {
-            Log.runtime(TAG,"ListAdapter error");
-            Log.printStackTrace(e);
+            list = list.sortedWith { o1, o2 ->
+                val contains1 = func.contains(o1.id) == true
+                val contains2 = func.contains(o2.id) == true
+                if (contains1 == contains2) o1.compareTo(o2) else if (contains1) -1 else 1
+            }
+        } catch (e: Exception) {
+            Log.printStackTrace("ListAdapter error", e)
         }
     }
 
-    public int findLast(String findThis) {
-        return findItem(findThis, false);
-    }
+    fun findLast(findThis: String): Int = findItem(findThis, false)
+    fun findNext(findThis: String): Int = findItem(findThis, true)
 
-    public int findNext(String findThis) {
-        return findItem(findThis, true);
-    }
-
-    private int findItem(String findThis, boolean forward) {
-        if (list == null || list.isEmpty()) {
-            return -1;
+    private fun findItem(findThisInput: String, forward: Boolean): Int {
+        if (list.isEmpty()) return -1
+        val findThis = findThisInput.lowercase()
+        if (findThis != findWord) {
+            resetFindState()
+            findWord = findThis
         }
-        findThis = findThis.toLowerCase();
-        if (!Objects.equals(findThis, findWord)) {
-            resetFindState();
-            findWord = findThis;
-        }
-        int current = Math.max(findIndex, 0);
-        int size = list.size();
-        int start = current;
+        var current = findIndex.coerceAtLeast(0)
+        val size = list.size
+        val start = current
         do {
-            current = (forward) ? (current + 1) % size : (current - 1 + size) % size;
-            if (list.get(current).name.toLowerCase().contains(findThis)) {
-                findIndex = current;
-                notifyDataSetChanged();
-                return findIndex;
+            current = if (forward) (current + 1) % size else (current - 1 + size) % size
+            if (list[current].name.lowercase().contains(findThis)) {
+                findIndex = current
+                notifyDataSetChanged()
+                return findIndex
             }
-        } while (current != start);
-        return -1;
+        } while (current != start)
+        return -1
     }
 
-    public void resetFindState() {
-        findIndex = -1;
-        findWord = null;
+    fun resetFindState() {
+        findIndex = -1
+        findWord = null
     }
 
-    public void exitFind() {
-        resetFindState();
+    fun exitFind() = resetFindState()
+
+    fun selectAll() {
+        selectModelFieldFunc?.clear()
+        list.forEach { selectModelFieldFunc?.add(it.id, 0) }
+        notifyDataSetChanged()
     }
 
-    public void selectAll() {
-        selectModelFieldFunc.clear();
-        for (MapperEntity item : list) {
-            selectModelFieldFunc.add(item.id, 0);
+    fun selectInvert() {
+        list.forEach {
+            if (selectModelFieldFunc?.contains(it.id) == false) selectModelFieldFunc?.add(it.id, 0)
+            else selectModelFieldFunc?.remove(it.id)
         }
-        notifyDataSetChanged();
+        notifyDataSetChanged()
     }
 
-    public void SelectInvert() {
-        for (MapperEntity item : list) {
-            if (!selectModelFieldFunc.contains(item.id)) {
-                selectModelFieldFunc.add(item.id, 0);
-            } else {
-                selectModelFieldFunc.remove(item.id);
-            }
+    override fun getCount(): Int = list.size
+    override fun getItem(position: Int): Any = list[position]
+    override fun getItemId(position: Int): Long = position.toLong()
+
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+        var vh: ViewHolder
+        val view: View = convertView ?: run {
+            vh = ViewHolder()
+            val newView = View.inflate(context, R.layout.list_item, null)
+            vh.tv = newView.findViewById(R.id.tv_idn)
+            vh.cb = newView.findViewById(R.id.cb_list)
+            if (listType == ListDialog.ListType.SHOW) vh.cb?.visibility = View.GONE
+            newView.tag = vh
+            viewHolderList.add(vh)
+            newView
         }
-        notifyDataSetChanged();
+        vh = view.tag as ViewHolder
+        val item = list[position]
+        vh.tv.text = item.name
+        val textColorPrimary = ContextCompat.getColor(context, R.color.textColorPrimary)
+        vh.tv.setTextColor(if (findIndex == position) Color.RED else textColorPrimary)
+        vh.cb.isChecked = selectModelFieldFunc?.contains(item.id) == true
+        return view
     }
 
-    @Override
-    public int getCount() {
-        return list != null ? list.size() : 0;
+    class ViewHolder {
+        lateinit var tv: TextView
+        lateinit var cb: CheckBox
     }
 
-    @Override
-    public Object getItem(int position) {
-        return list.get(position);
-    }
-
-    @Override
-    public long getItemId(int position) {
-        return position;
-    }
-
-    @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
-        ViewHolder vh;
-        if (convertView == null) {
-            vh = new ViewHolder();
-            convertView = View.inflate(context, R.layout.list_item, null);
-            vh.tv = convertView.findViewById(R.id.tv_idn);
-            vh.cb = convertView.findViewById(R.id.cb_list);
-            if (listType == ListDialog.ListType.SHOW) {
-                vh.cb.setVisibility(View.GONE);
-            }
-            convertView.setTag(vh);
-            viewHolderList.add(vh);
-        } else {
-            vh = (ViewHolder) convertView.getTag();
-        }
-        MapperEntity item = list.get(position);
-        vh.tv.setText(item.name);
-        int textColorPrimary = ContextCompat.getColor(context, R.color.textColorPrimary);
-        vh.tv.setTextColor(findIndex == position ? Color.RED : textColorPrimary);
-        vh.cb.setChecked(selectModelFieldFunc != null && selectModelFieldFunc.contains(item.id));
-        return convertView;
-    }
-
-    /**
-     * 内部 ViewHolder 类，用于缓存列表项视图。
-     */
-    public static class ViewHolder {
-        TextView tv;
-        CheckBox cb;
-    }
 }

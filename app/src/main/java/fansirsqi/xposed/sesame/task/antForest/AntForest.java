@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import de.robv.android.xposed.XposedHelpers;
 import fansirsqi.xposed.sesame.data.DataCache;
@@ -55,7 +56,6 @@ import fansirsqi.xposed.sesame.newutil.DataStore;
 import fansirsqi.xposed.sesame.task.ModelTask;
 import fansirsqi.xposed.sesame.task.TaskCommon;
 import fansirsqi.xposed.sesame.task.TaskStatus;
-import fansirsqi.xposed.sesame.ui.ObjReference;
 import fansirsqi.xposed.sesame.util.Average;
 import fansirsqi.xposed.sesame.util.GlobalThreadPools;
 import fansirsqi.xposed.sesame.util.ListUtil;
@@ -108,7 +108,8 @@ public class AntForest extends ModelTask {
     private volatile long robExpandCardEndTime = 0;
 
     private final Average delayTimeMath = new Average(5);
-    private final ObjReference<Long> collectEnergyLockLimit = new ObjReference<>(0L);
+    //    private final ObjReference<Long> collectEnergyLockLimit = new ObjReference<>(0L);
+    private final AtomicLong collectEnergyLockLimit = new AtomicLong(0L);
     private final Object doubleCardLockObj = new Object();
     private BooleanModelField expiredEnergy; // 收取过期能量
     private BooleanModelField collectEnergy;
@@ -1349,7 +1350,7 @@ public class AntForest extends ModelTask {
                                 GlobalThreadPools.sleep(sleep);
                             }
                             startTime = System.currentTimeMillis();
-                            collectEnergyLockLimit.setForce(startTime);
+                            collectEnergyLockLimit.set(startTime);
                         }
                         RequestManager.requestString(rpcEntity, 0, 0);
                         long spendTime = System.currentTimeMillis() - startTime;
@@ -1735,11 +1736,9 @@ public class AntForest extends ModelTask {
                     "TEST_LEAF_TASK",//逛农场得落叶肥料
                     "SHARETASK"//邀请好友助力
             ));
-            /* 3️⃣ 失败任务集合：空文件时自动创建空 HashSet 并立即落盘 */
             TypeReference<Set<String>> typeRef = new TypeReference<>() {
             };
             Set<String> badTaskSet = DataStore.INSTANCE.getOrCreate("badForestTaskSet", typeRef);
-            /* 3️⃣ 首次运行时把预设黑名单合并进去并立即落盘 */
             if (badTaskSet.isEmpty()) {
                 badTaskSet.addAll(presetBad);
                 DataStore.INSTANCE.put("badForestTaskSet", badTaskSet);   // 持久化
@@ -1797,8 +1796,8 @@ public class AntForest extends ModelTask {
                                         .incrementAndGet();
 
                                 JSONObject joFinishTask = new JSONObject(AntForestRpcCall.finishTask(sceneCode, taskType)); // 完成任务请求
-                                if (count > 1) {
-                                    Log.error(TAG, "完成森林任务失败超过1次" + taskTitle + "\n" + joFinishTask); // 记录完成任务失败信息
+                                if (count > 6) {
+                                    Log.error(TAG, "完成森林任务失败超过6次" + taskTitle + "\n" + joFinishTask); // 记录完成任务失败信息
                                     badTaskSet.add(taskType);
                                     DataStore.INSTANCE.put("badForestTaskSet", badTaskSet);
                                 } else {

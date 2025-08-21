@@ -319,8 +319,8 @@ public class AntForestRpcCall {
         jo.put("sceneCode", "ANTFOREST_ENERGY_SIGN");
         jo.put("source", "ANTFOREST");
         jo.put("userId", userId);
-        // 调用请求
-        return RequestManager.requestString("com.alipay.antiep.sign", new JSONArray().put(jo).toString());
+        String args = "[" + jo + "]";
+        return RequestManager.requestString("com.alipay.antiep.sign", args);
     }
 
     /**

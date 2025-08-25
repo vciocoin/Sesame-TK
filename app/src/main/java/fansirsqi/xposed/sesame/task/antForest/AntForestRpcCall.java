@@ -311,12 +311,12 @@ public class AntForestRpcCall {
         return RequestManager.requestString("alipay.antforest.forest.h5.popupTask", new JSONArray().put(jo).toString());
     }
 
-    public static String antiepSign(String entityId, String userId) throws JSONException {
+    public static String antiepSign(String entityId, String userId, String sceneCode) throws JSONException {
         // 构造 JSON 对象
         JSONObject jo = new JSONObject();
         jo.put("entityId", entityId);
         jo.put("requestType", "rpc");
-        jo.put("sceneCode", "ANTFOREST_ENERGY_SIGN");
+        jo.put("sceneCode", sceneCode);
         jo.put("source", "ANTFOREST");
         jo.put("userId", userId);
         String args = "[" + jo + "]";

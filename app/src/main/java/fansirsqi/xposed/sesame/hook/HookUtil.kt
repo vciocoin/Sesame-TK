@@ -208,7 +208,6 @@ object HookUtil {
     fun hookActive(lpparam: XposedModuleInterface.PackageLoadedParam) {
         try {
             XposedBridge.log("Hooking fansirsqi.xposed.sesame.ui.MainActivity...")
-
             // Hook updateSubTitle 方法
             XposedHelpers.findAndHookMethod(
                 "fansirsqi.xposed.sesame.ui.MainActivity",

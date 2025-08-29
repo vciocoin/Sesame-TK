@@ -64,7 +64,7 @@ data object AntFarmFamily {
      */
     fun enterFamily(familyOptions: SelectModelField, notInviteList: SelectModelField) {
         try {
-            val enterRes = JSONObject(AntFarmRpcCall.enterFamily());
+            val enterRes = JSONObject(AntFarmRpcCall.enterFamily())
             if (ResChecker.checkRes(TAG, enterRes)) {
                 groupId = enterRes.getString("groupId")
                 groupName = enterRes.getString("groupName")
@@ -214,7 +214,6 @@ data object AntFarmFamily {
                         }
                         val jo = JSONObject(AntFarmRpcCall.feedFriendAnimal(farmId, groupId))
                         if (ResChecker.checkRes(TAG, jo)) {
-                            Status.setFlagToday("farm::feedFriendLimit")
                             Log.farm("家庭任务🏠帮喂好友🥣[" + UserMap.getMaskName(userId) + "]的小鸡180g #剩余" + jo.getInt("foodStock") + "g")
                         }
                     } else {
